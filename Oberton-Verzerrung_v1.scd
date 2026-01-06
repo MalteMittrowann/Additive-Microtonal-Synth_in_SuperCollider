@@ -6,7 +6,7 @@ ServerOptions.devices;
 
 (
 o = Server.default.options;
-o.inDevice  = nil;     // kein Input
+o.inDevice  = nil;
 o.outDevice = "Windows WASAPI : Kopfhoerer (Realtek(R) Audio)";
 o.numOutputBusChannels = 2;
 o.numInputBusChannels = 0;
@@ -31,6 +31,10 @@ s.waitForBoot({
 	~detune = 0.002;      // Random drift
 	~inharm = 0.0001;     // Inharmonizität (Saitensteifigkeit)
 
+	// String simulation
+	~stringSim = 1;       // 0 = no string simulation --> note is sustained for as long the key is held, 1 = string simulation --> in the sustain phase the note fades out
+	~fadeOutTime = 3.0;     // Fade-out time
+
 	// ADSR settings
 	~att = 0.01;  // Attack in sec
 	~dec = 0.3;   // Decay in sec
@@ -44,18 +48,18 @@ s.waitForBoot({
 	// --- 2. SYNTH DEFINITION ---
 	//****************************
 
-	SynthDef(\additiveMicro, {
+	SynthDef(\additiveSynth, {
 		arg note = 69, amp = 0.2, gate = 1, out = 0,
 		f0 = 440, octaveRatio = 2.0, stepsPerOctave = 12,
 		bright = 1.5, detune = 0.002, inharm = 0.0001,
-		att = 0.01, dec = 0.3, sus = 0.5, rel = 1.0;
+		att = 0.01, dec = 0.3, sus = 0.5, rel = 1.0, stringSim = 1, fadeOutTime = 4.0;
 
-		var sig, env, partials, freqs, amps, phases, midiNote, calculatedFreq;
+		var sig, env, partials, freqs, amps, phases, midiNote, calculatedFreq, stringDamp;
 
 		calculatedFreq = f0 * (octaveRatio.pow((note - 69) / stepsPerOctave));
 
-		partials = [1..12];
-freqs = partials.collect({ |i|
+		partials = (1..30);
+		freqs = partials.collect({ |i|
 			var base = calculatedFreq * i;
 			// Physik: Saitensteifigkeit
 			var stretching = (1 + (inharm * i.pow(2))).sqrt;
@@ -75,10 +79,17 @@ freqs = partials.collect({ |i|
 		sig = Klang.ar(`[freqs, amps, phases]);
 		env = EnvGen.kr(Env.adsr(att, dec, sus, rel), gate, doneAction: 2);
 
-		Out.ar(out, Pan2.ar(sig * env * amp, 0));
+		stringDamp = Select.kr(stringSim, [
+			DC.kr(1),
+			XLine.kr(1.0, 0.001, fadeOutTime)
+		]);
+
+		Out.ar(out, Pan2.ar(sig * env * stringDamp * amp, 0));
 	}).add;
 
 	s.sync; // Wait for the SynthDef to be loaded
+
+	"SYNTHESIZER ACTIVE!".postln;
 
 	//********************************************************
 	// --- 3. Helper Function for LIVE UPDATE OF VARIABLES ---
@@ -91,16 +102,18 @@ freqs = partials.collect({ |i|
 					\f0, ~f0,
 					\octaveRatio, ~octRatio,
 					\stepsPerOctave, ~steps,
-					\amp, ~amp
+					\amp, ~amp,
 					\detune, ~detune,
 					\inharm, ~inharm,
+					\stringSim, ~stringSim,
+					\fadeOutTime, ~fadeOutTime,
 					// ADSR-Settings:
 					\att, ~att, \dec, ~dec, \sus, ~sus, \rel, ~rel
 				);
 			}
 		});
-		"UPDATE variables: -> F0:% | OctaveRatio:% | StepsPerOctave:% | Inharm:% | Detune:% | Amplification:% | ADSR: % % % %".format(
-			~f0, ~octRatio, ~steps, ~inharm, ~detune, ~amp, ~att, ~dec, ~sus, ~rel).postln;
+		"UPDATE variables: -> F0:% | OctaveRatio:% | StepsPerOctave:% | Inharm:% | Detune:% | Amplification:% | String-Simulation:% - FadeOutTime:% | ADSR: % % % %".format(
+			~f0, ~octRatio, ~steps, ~inharm, ~detune, ~amp, ~stringSim, ~fadeOutTime, ~att, ~dec, ~sus, ~rel).postln;
 	};
 
 	//******************************
@@ -112,26 +125,103 @@ freqs = partials.collect({ |i|
 
 	// Note On
 	MIDIdef.noteOn(\on, { |vel, num|
-		~activeSynths[num] = Synth(\additiveOrganic, [
-			\note, num,
-			\bright, vel.linlin(0, 127, 3.5, 0.6),
-			\amp, vel.linlin(0, 127, 0, ~amp),
-			\detune, ~detune,
-			\inharm, ~inharm,
-			\f0, ~f0,
-			\octaveRatio, ~octRatio,
-			\stepsPerOctave, ~steps,
-			// ADSR-Settings:
-			\att, ~att, \dec, ~dec, \sus, ~sus, \rel, ~rel
-		]).onFree({ ~activeSynths[num] = nil });
+		if (vel > 0) {
+			// Play note only if noteOn and vel > 0
+			if (~activeSynths[num].isNil) {
+				~activeSynths[num] = Synth(\additiveSynth, [
+					\note, num,
+					\velAmp, vel.linlin(0, 127, 0, ~amp),
+					\bright, vel.linlin(0, 127, 3.5, 0.5),
+					\f0, ~f0, \octaveRatio, ~octRatio, \stepsPerOctave, ~steps,
+					\detune, ~detune, \inharm, ~inharm,
+					\stringSim, ~stringSim,
+					\fadeOutTime, ~fadeOutTime,
+					\att, ~att, \dec, ~dec, \sus, ~sus, \rel, ~rel
+				]);
+			};
+
+		} {
+			// Note On mit Velocity 0 (AKAI Stil)
+			if (~activeSynths[num].notNil) {
+				~activeSynths[num].set(\gate, 0);
+				~activeSynths[num] = nil; // Clear immediately for next trigger
+			};
+		};
 	});
 
 	// Note Off
 	MIDIdef.noteOff(\off, { |vel, num|
-		~activeSynths[num].set(\gate, 0);
+		if (~activeSynths[num].notNil) {
+			~activeSynths[num].set(\gate, 0);
+			~activeSynths[num] = nil; // Clear immediately fot next trigger
+		};
 	});
 
-	"SYNTHESIZER ACTIVE!".postln;
+	"MIDI-Config ACTIVE!".postln;
+
+	// =================================================================
+	// 5. HARDWARE CONTROLLER MAPPING (KORG nanoKONTROL2)
+	// =================================================================
+
+	// FADER 1: Grundfrequenz (300Hz bis 600Hz)
+	MIDIdef.cc(\korg_f0, { |val|
+		~f0 = val.linlin(0, 127, 300, 600);
+		~updateSynths.value;
+		"f0 = %".format(~f0).postln;
+	}, 0); // CC Nummer 0
+
+	// FADER 2: Oktaverhältnis (1.8 bis 2.2)
+	MIDIdef.cc(\korg_ratio, { |val|
+		~octRatio = val.linlin(0, 127, 1.8, 2.2);
+		~updateSynths.value;
+		"octRatio = %".format(~octRatio).postln;
+	}, 1); // CC Nummer 1
+
+	// FADER 3: Stufen pro Oktave (5 bis 24)
+	MIDIdef.cc(\korg_steps, { |val|
+		~steps = val.linlin(0, 127, 5, 24).round;
+		~updateSynths.value;
+		"steps = %".format(~steps).postln;
+	}, 2); // CC Nummer 2
+
+	// KNOB 1: Detune / Drift (0.0 bis 0.02)
+	MIDIdef.cc(\korg_detune, { |val|
+		~detune = val.linlin(0, 127, 0.0, 0.02);
+		~updateSynths.value;
+		"detune = %".format(~detune).postln;
+	}, 16); // CC Nummer 16 (Standard für Knob 1 beim nanoKONTROL)
+
+	// KNOB 2: Inharmonizität (0.0 bis 0.005)
+	MIDIdef.cc(\korg_inharm, { |val|
+		~inharm = val.linlin(0, 127, 0.0, 0.005);
+		~updateSynths.value;
+		"inharm = %".format(~inharm).postln;
+	}, 17); // CC Nummer 17
+
+	// FADER 8 (Master): Gesamtlautstärke
+	MIDIdef.cc(\korg_amp, { |val|
+		~amp = val.linlin(0, 127, 0.0, 0.5);
+		~updateSynths.value;
+		"amp = %".format(~amp).postln;
+	}, 7); // CC Nummer 7
+
+	// ADSR Steuerung (Slider 4, 5, 6, 7)
+	MIDIdef.cc(\korg_att, { |val| ~att = val.linlin(0, 127, 0.01, 2.0); ~updateSynths.value; "ADSR: Attack = %".format(~att).postln;}, 3);
+	MIDIdef.cc(\korg_dec, { |val| ~dec = val.linlin(0, 127, 0.01, 1.0); ~updateSynths.value; "ADSR: Decay = %".format(~dec).postln;}, 4);
+	MIDIdef.cc(\korg_sus, { |val| ~sus = val.linlin(0, 127, 0.0, 1.0);  ~updateSynths.value; "ADSR: Sustain = %".format(~sus).postln;}, 5);
+	MIDIdef.cc(\korg_rel, { |val| ~rel = val.linlin(0, 127, 0.1, 4.0);  ~updateSynths.value; "ADSR: Realease = %".format(~rel).postln;}, 6);
+
+
+	// --- Debugging Tool ---
+	// Falls dein KORG andere CC Nummern sendet, aktiviere diese Zeile,
+	// bewege einen Regler und schau ins Post-Window, welche Nummer ("num") erscheint.
+	/*
+	MIDIdef.cc(\debugCC, { |val, num, chan|
+		["CC empfangen:", num, val].postln;
+	});
+	*/
+
+	"Synth and Config ACTIVE!".postln;
 });
 )
 
@@ -227,6 +317,14 @@ window.onClose = {
 // Sound quality
 ~detune = 0.005; ~updateSynths.value;
 ~inharm = 0.0002; ~updateSynths.value;
+
+// String simulation
+~stringSim = 0; ~updateSynths.value; // witout string simulation
+~stringSim = 1; ~updateSynths.value; // with string simulation
+
+~fadeOutTime = 0.8; ~updateSynths.value;
+~fadeOutTime = 3.0; ~updateSynths.value;
+~fadeOutTime = 8.0; ~updateSynths.value;
 
 // ADSR-Settings
 
