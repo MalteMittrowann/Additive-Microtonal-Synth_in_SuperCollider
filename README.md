@@ -65,3 +65,15 @@ You can modify the sound in real-time by executing lines at the bottom of the sc
 
 // Example: Switch to "Piano Mode" with a 4-second tail
 ~stringSim = 1; ~fadeOutTime = 4.0; ~updateSynths.value;
+```
+## Hardware Mapping
+
+The script includes pre-configured mappings for standard MIDI controllers (e.g., KORG nanoKONTROL2, AKAI MPKmini):
+* CC 0: Fundamental Frequency ($f_0$)
+* CC 1: Octave Ratio (Stretch/Compress)
+* CC 2: Steps per OctaveCC 64: Sustain Pedal
+* CC 16/17: Detune & Inharmonicity
+  
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
