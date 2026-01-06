@@ -33,7 +33,7 @@ s.waitForBoot({
 
 	// String simulation
 	~stringSim = 1;       // 0 = no string simulation --> note is sustained for as long the key is held, 1 = string simulation --> in the sustain phase the note fades out
-	~fadeOutTime = 3.0;     // Fade-out time
+	~fadeOutTime = 3.0;   // Fade-out time
 
 	// ADSR settings
 	~att = 0.01;  // Attack in sec
@@ -43,6 +43,9 @@ s.waitForBoot({
 
 	// Array for Synth management
 	~activeSynths = Array.newClear(128);
+
+	~pedalDown = false;           // Sustain pedal
+	~sustainedNotes = Set.new;    // Set of notes held by the sustain pedal
 
 	//****************************
 	// --- 2. SYNTH DEFINITION ---
@@ -123,37 +126,70 @@ s.waitForBoot({
 	MIDIClient.init;
 	MIDIIn.connectAll;
 
-	// Note On
+	// -------------
+	// Sustain pedal
+	// -------------
+	MIDIdef.cc(\sustainPedal, { |val|
+		if (val >= 64) {
+			// Sustain pedal is being pressed
+			~pedalDown = true;
+			"Pedal Down".postln;
+		} {
+			// Sustain pedal is being released
+			~pedalDown = false;
+			~sustainedNotes.do({ |noteNum|
+				if (~activeSynths[noteNum].notNil) {
+					~activeSynths[noteNum].set(\gate, 0);
+					~activeSynths[noteNum] = nil;
+				};
+			});
+			~sustainedNotes.clear;
+			"Pedal Up -> Release Notes".postln;
+		};
+	}, 64);
+
+	// -------
+	// NOTE ON
+	// -------
 	MIDIdef.noteOn(\on, { |vel, num|
 		if (vel > 0) {
-			// Play note only if noteOn and vel > 0
-			if (~activeSynths[num].isNil) {
-				~activeSynths[num] = Synth(\additiveSynth, [
-					\note, num,
-					\velAmp, vel.linlin(0, 127, 0, ~amp),
-					\bright, vel.linlin(0, 127, 3.5, 0.5),
-					\f0, ~f0, \octaveRatio, ~octRatio, \stepsPerOctave, ~steps,
-					\detune, ~detune, \inharm, ~inharm,
-					\stringSim, ~stringSim,
-					\fadeOutTime, ~fadeOutTime,
-					\att, ~att, \dec, ~dec, \sus, ~sus, \rel, ~rel
-				]);
+			// Re-trigger note being played again with held pedal
+			if (~sustainedNotes.includes(num)) {
+				~sustainedNotes.remove(num);
 			};
-
-		} {
-			// Note On mit Velocity 0 (AKAI Stil)
 			if (~activeSynths[num].notNil) {
 				~activeSynths[num].set(\gate, 0);
-				~activeSynths[num] = nil; // Clear immediately for next trigger
 			};
+
+			~activeSynths[num] = Synth(\additiveSynth, [
+				\note, num,
+				\velAmp, vel.linlin(0, 127, 0, ~amp),
+				\bright, vel.linlin(0, 127, 3.5, 0.5),
+				\f0, ~f0, \octaveRatio, ~octRatio, \stepsPerOctave, ~steps,
+				\detune, ~detune, \inharm, ~inharm,
+				\att, ~att, \dec, ~dec, \sus, ~sus, \rel, ~rel,
+				\stringSim, ~stringSim, \fadeOutTime, ~fadeOutTime
+			]);
+		} {
+			// Note on with velocity = 0 --> trigger noteOff
+			MIDIdef.noteOff(\off).func.value(0, num);
 		};
 	});
 
-	// Note Off
+	// --------
+	// NOTE OFF
+	// --------
 	MIDIdef.noteOff(\off, { |vel, num|
-		if (~activeSynths[num].notNil) {
-			~activeSynths[num].set(\gate, 0);
-			~activeSynths[num] = nil; // Clear immediately fot next trigger
+		// Check: Is sustain pedal being pressed
+		if (~pedalDown) {
+			if (~activeSynths[num].notNil) {
+				~sustainedNotes.add(num);
+			};
+		} {
+			if (~activeSynths[num].notNil) {
+				~activeSynths[num].set(\gate, 0);
+				~activeSynths[num] = nil;
+			};
 		};
 	});
 
@@ -213,13 +249,10 @@ s.waitForBoot({
 
 
 	// --- Debugging Tool ---
-	// Falls dein KORG andere CC Nummern sendet, aktiviere diese Zeile,
-	// bewege einen Regler und schau ins Post-Window, welche Nummer ("num") erscheint.
-	/*
+	// Check for naming of KORG nanoKontrol faders etc.
 	MIDIdef.cc(\debugCC, { |val, num, chan|
-		["CC empfangen:", num, val].postln;
+		["CC received:", num, val].postln;
 	});
-	*/
 
 	"Synth and Config ACTIVE!".postln;
 });
@@ -312,7 +345,7 @@ window.onClose = {
 ~f0 = 440; ~updateSynths.value;
 
 // Main-Velocity
-~amp = 0.4; ~updateSynths.value;
+~amp = 0.6; ~updateSynths.value;
 
 // Sound quality
 ~detune = 0.005; ~updateSynths.value;
