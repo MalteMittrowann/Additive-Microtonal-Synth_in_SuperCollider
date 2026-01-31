@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Additive Microtonal Synthesizer with Elastic Spectras</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Custom Logic -->
+    <script src="script.js" defer></script>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Additive Microtonal Synthesizer with Elastic Spectras</h1>
+            <p class="subtitle">Variable Octave Ratios and Elastic Spectras in Additive Synthesis</p>
+        </header>
+
+        <!-- Visualizer Area -->
+        <canvas id="oscilloscope"></canvas>
+
+        <div id="overlay">
+            <button id="startBtn">CLICK TO ENABLE AUDIO</button>
+        </div>
+
+        <div class="controls-grid">
+            <!-- Parameter Sliders -->
+            <div class="control-group">
+                <label>Fundamental (f0) <span id="val_f0" class="val">440</span> Hz</label>
+                <input type="range" id="f0" min="200" max="600" value="440">
+            </div>
+
+            <div class="control-group">
+                <label>Octave Ratio <span id="val_ratio" class="val">2.0</span></label>
+                <input type="range" id="ratio" min="1.5" max="3.0" step="0.01" value="2.0">
+            </div>
+
+            <div class="control-group">
+                <label>Steps / Octave <span id="val_steps" class="val">12</span></label>
+                <input type="range" id="steps" min="5" max="24" step="1" value="12">
+            </div>
+
+            <div class="control-group">
+                <label>Inharmonicity <span id="val_inharm" class="val">0.0001</span></label>
+                <input type="range" id="inharm" min="0.0" max="0.005" step="0.0001" value="0.0001">
+            </div>
+
+            <div class="control-group">
+                <label>Brightness <span id="val_bright" class="val">1.5</span></label>
+                <input type="range" id="bright" min="0.5" max="3.0" step="0.1" value="1.5">
+            </div>
+            
+            <div class="control-group">
+                <label>Release Time <span id="val_rel" class="val">1.5</span> s</label>
+                <input type="range" id="rel" min="0.1" max="4.0" step="0.1" value="1.5">
+            </div>
+        </div>
+
+        <!-- NEW: Realistic Piano Keyboard -->
+        <div class="keyboard-container">
+            <div class="piano-keyboard">
+                <!-- White Keys -->
+                <div class="key white" data-note="60" data-key="y"><span>Y</span></div>
+                <div class="key white" data-note="62" data-key="x"><span>X</span></div>
+                <div class="key white" data-note="64" data-key="c"><span>C</span></div>
+                <div class="key white" data-note="65" data-key="v"><span>V</span></div>
+                <div class="key white" data-note="67" data-key="b"><span>B</span></div>
+                <div class="key white" data-note="69" data-key="n"><span>N</span></div>
+                <div class="key white" data-note="71" data-key="m"><span>M</span></div>
+
+                <!-- Black Keys (Positioned via CSS) -->
+                <!-- C# (S) -->
+                <div class="key black" data-note="61" data-key="s" style="left: 14.28%;"><span>S</span></div>
+                <!-- D# (D) -->
+                <div class="key black" data-note="63" data-key="d" style="left: 28.57%;"><span>D</span></div>
+                <!-- F# (G) -->
+                <div class="key black" data-note="66" data-key="g" style="left: 57.14%;"><span>G</span></div>
+                <!-- G# (H) -->
+                <div class="key black" data-note="68" data-key="h" style="left: 71.42%;"><span>H</span></div>
+                <!-- A# (J) -->
+                <div class="key black" data-note="70" data-key="j" style="left: 85.71%;"><span>J</span></div>
+            </div>
+            <p id="status">Audio engine standby.</p>
+        </div>
+    </div>
+
+</body>
+</html>

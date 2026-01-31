@@ -1,6 +1,6 @@
 # Additive-Microtonal-Synth_in_SuperCollider
 
-**A SuperCollider project exploring dynamic microtonality and variable octave ratios through additive synthesis.**
+**A SuperCollider and Web Application project exploring dynamic microtonality and elastic spectras and corresponding intervals through additive synthesis.**
 
 ## Audio Demos
 
@@ -12,7 +12,7 @@ Listen to the resulting sound experiments, featuring Ludwig van Beethoven's *Bag
 
 ## Project Overview
 
-This project implements a custom real-time synthesis engine in **SuperCollider** designed to investigate the sonic implications of non-standard frequency ratios. By decoupling the harmonic series from the traditional 2:1 octave relationship, the synthesizer allows for the continuous "stretching" or "compressing" of the frequency spectrum.
+This project implements a custom real-time synthesis engine in **SuperCollider**  and as a Web Application designed to investigate the sonic implications of non-standard frequency ratios. By decoupling the harmonic series from the traditional 2:1 octave relationship, the synthesizer allows for the continuous "stretching" or "compressing" of the frequency spectrum.
 
 The engine was used to re-interpret Beethoven's *Bagatelle Op. 33 No. 6 in D major*, demonstrating how structural changes in tuning directly affect the perceived timbre and emotional character of classical harmony.
 
@@ -25,7 +25,27 @@ $$f(i) = f_0 \cdot \text{ratio}^{\frac{i}{\text{steps}}}$$
 * **ratio > 2.0:** Stretched Spectrum (Bell-like, metallic, "open" intervals).
 * **ratio < 2.0:** Compressed Spectrum (Darker, denser, historically distinct).
 
+## Usage
+
+This project is available in two versions: a browser-based Web App for instant access and the original SuperCollider environment for advanced control and hardware integration.
+
+1. Web Application (Instant Play)
+
+A port of the synthesis engine using Tone.js and Canvas API, allowing you to experiment with spectral stretching directly in the browser without installation.
+
+* **Features:** Real-time parameter sliders, Oscilloscope visualizer, Computer Keyboard support.
+
+* **Controls:** Modify Fundamental Frequency, Octave Ratio, Inharmonicity, and Brightness on the fly.
+
+[**Launch Web Synthesizer**](https://maltemittrowann.com/Additive-elastic_synthesizer)
+
+2. SuperCollider (Full Version)
+
+The original research environment featuring full hardware MIDI support, high-resolution audio, and deep code editability.
+
 ## Key Features
+
+* Full SuperCollider-Version:
 
 ### 1. Advanced Additive Engine
 * **30-Partial Oscillator Bank:** Generates rich, complex timbres using the `Klang` UGen.
@@ -41,7 +61,21 @@ $$f(i) = f_0 \cdot \text{ratio}^{\frac{i}{\text{steps}}}$$
 * **Sustain Pedal Support:** Full implementation of CC 64 logic for realistic piano phrasing.
 * **Real-time Parameter Control:** Mapped for hardware controllers (e.g., KORG nanoKONTROL2) to manipulate $f_0$, stretch ratio, and envelope settings on the fly.
 
+* Web Application with Tone.js and Canvas API
+
+* **Browser-Based Additive Engine:** Powered by Tone.js, generating 12 partials per voice in real-time directly in the client.
+
+* **Interactive Visualizer:** Integrated real-time oscilloscope display using the HTML5 Canvas API to visualize spectral beating and waveform texture changes.
+
+* **Zero-Setup Accessibility:** Runs instantly on any modern web browser via GitHub Pages.
+
+* **UI Parameter Control:** Clean, dark-mode interface with native sliders for immediate manipulation of Fundamental Frequency ($f_0$), Stretch Ratios, Inharmonicity, and Brightness.
+
+* **Polyphonic Keyboard Input:** Supports polyphonic playing via computer keyboard with automatic mapping for QWERTY and QWERTZ layouts.
+
 ## Usage & Installation
+
+* Full SuperCollider-Version:
 
 ### Prerequisites
 * [SuperCollider](https://supercollider.github.io/) (Version 3.10 or later recommended).
@@ -66,14 +100,18 @@ You can modify the sound in real-time by executing lines at the bottom of the sc
 // Example: Switch to "Piano Mode" with a 4-second tail
 ~stringSim = 1; ~fadeOutTime = 4.0; ~updateSynths.value;
 ```
-## Hardware Mapping
+### Hardware Mapping
 
 The script includes pre-configured mappings for standard MIDI controllers (e.g., KORG nanoKONTROL2, AKAI MPKmini):
 * CC 0: Fundamental Frequency ($f_0$)
 * CC 1: Octave Ratio (Stretch/Compress)
 * CC 2: Steps per OctaveCC 64: Sustain Pedal
 * CC 16/17: Detune & Inharmonicity
-  
+
+* Web Application:
+
+[**Launch Web Synthesizer**](https://maltemittrowann.com/Additive-elastic_synthesizer)
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

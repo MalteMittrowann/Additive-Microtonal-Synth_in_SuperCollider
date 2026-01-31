@@ -332,7 +332,8 @@ window.onClose = {
 )
 
 // Frequency-Relation of the octave
-~octRatio = 2.1; ~updateSynths.value;
+~octRatio = 1.75; ~updateSynths.value;
+~octRatio = 2.5; ~updateSynths.value;
 ~octRatio = 2.0; ~updateSynths.value;
 
 // Equal tempered steps in one octave
@@ -345,7 +346,7 @@ window.onClose = {
 ~f0 = 440; ~updateSynths.value;
 
 // Main-Velocity
-~amp = 0.6; ~updateSynths.value;
+~amp = 1.0; ~updateSynths.value;
 
 // Sound quality
 ~detune = 0.005; ~updateSynths.value;
